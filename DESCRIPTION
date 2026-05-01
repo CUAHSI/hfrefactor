@@ -1,0 +1,40 @@
+Package: hfrefactor
+Title: Refactor hydrographic networks for more consistent modeling fabric
+Version: 0.1
+Authors@R: 
+    c(person(given = "Mike", 
+             family = "Johnson", 
+             role = c("aut", "cre"),
+             email = "mjohnson@lynker.com"),
+             person(given = "Justin", family = "Singh-Mohudpur", 
+             role = c("aut")),
+             person(given = "David", family = "Blodgett", 
+             role = c("ctb")))
+Description: Refactor hydrographic networks for more consistent modeling fabric.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: 
+    cli,
+    data.table,
+    dplyr,
+    dtplyr,
+    glue,
+    hfutils,
+    hydrofab,
+    igraph,
+    logger,
+    lwgeom,
+    rlang,
+    rmapshaper,
+    sf,
+    terra,
+    tidyr,
+    tools,
+    units,
+    utils,
+    whitebox
+Remotes: 
+    lynker-spatial/hfutils,
+    NOAA-OWP/hydrofab

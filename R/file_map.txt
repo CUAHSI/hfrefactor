@@ -1,0 +1,1 @@
+/signup?client_id=73r3fn6gi8f3qhha2m5n0197v4&nonce=hzN2DzXaJHsQht3WVsL06DopDoupq4D9LVXiYPQYAHo&redirect_uri=https%3A%2F%2Fproxy.lynker-spatial.com%2Foauth2%2Fcallback&response_type=code&scope=openid+email+phone+profile&state=oS_vvJnKKfq6TVgmix2MRnj5TZIO0QFH9rzw0zBoIUA%3A%2Fhydrofabric%2F

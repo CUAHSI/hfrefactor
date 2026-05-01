@@ -1,0 +1,82 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  warning = FALSE
+)
+```
+
+# hfrefactor
+
+The `hfrefactor` package helps refactor hydrographic flowline networks and reconcile catchment divides so they are ready for hydrologic modeling. It wraps a set of tools for normalizing NHDPlus-style inputs, splitting or collapsing flowpaths, and reassembling polygon divides that stay consistent with the refactored network.
+
+## Installation
+
+`hfrefactor` depends on several spatial packages (e.g., `sf`, `terra`, `whitebox`) that in turn require the GDAL/PROJ/GEOS libraries to be present on your system. Install those system requirements first, then install the package with:
+
+```r
+# install.packages("remotes")
+remotes::install_github("lynker-spatial/hfrefactor")
+```
+
+## Getting started
+
+Load the package together with the spatial dependencies you plan to use:
+
+```r
+library(hfrefactor)
+library(sf)
+```
+
+The central workflow is driven by `refactor()`:
+
+```r
+gpkg   <- "/path/to/source_network.gpkg"   # must contain flowpaths, divides, (optionally) events
+fac    <- "/path/to/fac.tif"               # optional flow accumulation raster
+fdr    <- "/path/to/fdr.tif"               # optional flow direction raster
+outfile <- "refactored_outputs.gpkg"
+
+refactor(
+  gpkg      = gpkg,
+  fac       = fac,
+  fdr       = fdr,
+  outfile   = outfile,
+  split_flines_meters         = 10000,
+  collapse_flines_meters      = 1000,
+  collapse_flines_main_meters = 1000,
+  simplify_tolerance_m        = 40
+)
+```
+
+When `gpkg` is supplied, the function expects the GeoPackage to include layers named `flowpaths`, `divides`, and (optionally) `events`. You can also pass those layers directly as `sf` objects via the `flowpaths`, `divides`, and `events` arguments.
+
+## Outputs
+
+`refactor()` writes several layers into `outfile`:
+
+- `refactored_flowpaths`: the split/collapsed network in EPSG:5070.
+- `reconciled_flowpaths`: per-flowline polygons matching the new network.
+- `refactored_divides`: unioned divides aligned to the refactored flowpaths.
+- `lookup_table`: mapping between reconciled IDs and member COMIDs.
+- `outlets` and `pois`: optional tables when POI/event data are provided.
+
+Helper functions such as `split_flowlines()`, `collapse_flowlines()`, and `reconcile_divides()` are exported if you need finer control over individual steps.
+
+## Data requirements
+
+- Flowlines should follow the NHDPlus schema (or similar) so the package can normalize field names (e.g., `COMID`, `toCOMID`, `LevelPathI`, `TotDASqkm`).
+- Divides require a `FEATUREID` column that matches the base COMIDs in the flowline network.
+- Points-of-interest must carry identifiers that align with the original (pre-refactor) flowline IDs.
+
+## Contributing
+
+Issues and pull requests are welcome. Please open an issue to discuss substantial changes so we can align on scope, data requirements, and expectations for testing.
+
