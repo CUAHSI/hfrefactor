@@ -9,11 +9,12 @@ refactor_flowpaths <- function(
     out_reconciled
 ) {
 
+  # Use max_length parameter (was previously hardcoded to 10000)
   flowpaths <- flowpaths |>
     sf::st_cast("LINESTRING", warn = FALSE) |>
     sf::st_transform(5070) |>
     hydrofab::split_flowlines(
-      max_length = 10000,
+      max_length = max_length,
       events = events,
       avoid = exclude_ids
     )

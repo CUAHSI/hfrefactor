@@ -319,7 +319,8 @@ reconcile_divides <- function(
         min_area_m2,
         snap_distance_m,
         simplify_tolerance_m
-      )
+      ),
+      silent = TRUE
     )
 
     if (inherits(split_cats, "try-error")) {
@@ -331,14 +332,15 @@ reconcile_divides <- function(
           fdr = fdr,
           fac = fac,
           lr = FALSE,
-          min_area_m2 = min_area_m2,
+          min_area_m = min_area_m2,
           snap_distance_m = snap_distance_m,
           simplify_tolerance_m = simplify_tolerance_m,
           vector_crs = "EPSG:5070"
-        )
+        ),
+        silent = TRUE
       )
 
-      if (inherits(split_cats, "try_error")) {
+      if (inherits(split_cats, "try-error")) {
         second_error <- split_cats
         stop(
           "splitting failed with both methods:",
@@ -384,10 +386,14 @@ reconcile_divides <- function(
         start_time <- Sys.time()
         msg <- ""
 
-        result <- try(split_cat(fid))
+        result <- try(split_cat(fid), silent = TRUE)
         if (inherits(result, "try-error")) {
           status <- "ERROR"
           msg <- as.character(result)[1]
+          message(sprintf(
+            "FEATUREID %s could not be split (likely at raster edge or incomplete FAC coverage); using original unsplit geometry.",
+            fid
+          ))
           result <-
             dplyr::filter(divides, FEATUREID == !!fid) |>
             dplyr::select(FEATUREID, geometry) |>

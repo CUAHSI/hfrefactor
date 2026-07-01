@@ -58,6 +58,8 @@
 
 .setup = function(gpkg, flowpaths, divides, events, avoid = NULL) {
 
+  cat('\nRUNNING .SETUP()', file = stderr())
+  
   if(!is.null(gpkg)){
     divides = sf::read_sf(gpkg, "divides")
     flowpaths = sf::read_sf(gpkg, "flowpaths")
@@ -76,10 +78,30 @@
   names(divides)    <- tolower(names(divides))
   names(flowpaths)  <- tolower(names(flowpaths))
 
-  fl_lookup  <- c(id = "comid", toid = "tocomid", levelpathi = "mainstemlp")
+  # tony: changing the column names so they work with the NHD-style labels
+  # as well as the new label used in the v2.3 parquet files
+  #     New format (flowpath_id, flowpath_toid) → gets renamed to id, toid 
+  #     NHD-style  (comid, tocomid) → gets renamed to id, toid 
+  # I'm adding new columns so that we don't break the flowpath_id
+  if (all(c("flowpath_id", "flowpath_toid") %in% names(flowpaths))) {
+    flowpaths$id   <- flowpaths$flowpath_id
+    flowpaths$toid <- flowpaths$flowpath_toid
+  } else if (all(c("comid", "tocomid") %in% names(flowpaths))) {
+    flowpaths$id   <- flowpaths$comid
+    flowpaths$toid <- flowpaths$tocomid
+  }
+  if ("mainstemlp" %in% names(flowpaths)) {
+    flowpaths$levelpathi <- flowpaths$mainstemlp
+  }
+  ## levelpathi -> mainstemlp doesn't need to be preserved, so rename is fine here
+  #flowpaths <- dplyr::rename(flowpaths, any_of(c(levelpathi = "mainstemlp")))
+  
+  
+  #fl_lookup  <- c(id = "flowpath_id", toid = "flowpath_toid", 
+  #                id = "comid", toid = "tocomid", levelpathi = "mainstemlp")
+  #flowpaths <- dplyr::rename(as.data.frame(flowpaths), any_of(fl_lookup))
+  
   div_lookup <- c(FEATUREID = "divide_id", toid = "tocomid", levelpathi = "mainstemlp")
-
-  flowpaths <- dplyr::rename(as.data.frame(flowpaths), any_of(fl_lookup))
   divides   <- dplyr::rename(as.data.frame(divides), any_of(div_lookup)) |>
     st_as_sf()
 
@@ -89,16 +111,27 @@
 
   if (!is.null(events)) {
 
-    match_id <- ifelse("flowpath_id" %in% names(flowpaths), "flowpath_id", "comid")
+    #match_id <- ifelse("flowpath_id" %in% names(flowpaths), "flowpath_id", "comid")
 
+    match_id <- if ("flowpath_id" %in% names(flowpaths)) {
+      "flowpath_id"
+    } else if ("comid" %in% names(flowpaths)) {
+      "comid"
+    } else {
+      "id"
+    }
+    
     outlets <-
       dplyr::inner_join(
-        events,
+        dplyr::mutate(events, flowpath_id = as.character(flowpath_id)),
         dplyr::select(sf::st_drop_geometry(flowpaths),
-                      totdasqkm, match_id,
-                      dnhydroseq),
+                      totdasqkm, dplyr::all_of(match_id),
+                      dnhydroseq) |>
+          dplyr::mutate(dplyr::across(dplyr::all_of(match_id), as.character)),
         by = c("flowpath_id" = match_id)
       )
+
+    events <- dplyr::mutate(events, flowpath_id = as.character(flowpath_id))
 
     # Need to avoid modification to flowlines immediately downstream of POIs
     #      This can cause some hydrologically-incorrect catchment aggregation
@@ -121,8 +154,8 @@
   flowpaths <- flowpaths |>
     dplyr::mutate(refactor = as.integer(terminalpa %in% unique(flowpaths$terminalpa)))  |>
     dplyr::rename(
-      COMID = flowpath_id,
-      toCOMID = flowpath_toid,
+      COMID = id, # was flowpath_id
+      toCOMID = toid, # was flowpath_toid
       LENGTHKM = lengthkm,
       REACHCODE = reachcode,
       FromMeas = frommeas,
@@ -347,6 +380,7 @@ refactor <- function(gpkg      = NULL,
       sf::st_drop_geometry() |>
       dplyr::anti_join(event_outlets, by = "member_COMID") |>
       dplyr::select(member_COMID, orig_COMID) |>
+      dplyr::mutate(orig_COMID = as.character(orig_COMID)) |>
       dplyr::inner_join(ll$outlets, by = c("orig_COMID" = "flowpath_id")) |>
       dplyr::slice_max(order_by = as.numeric(member_COMID), n = 1, by = orig_COMID, with_ties = FALSE) |>
       dplyr::select(flowpath_id = orig_COMID, poi_id, member_COMID, geom)

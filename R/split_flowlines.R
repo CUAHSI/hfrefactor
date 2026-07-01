@@ -67,12 +67,11 @@ split_flowlines <- function(flines,
                          as.character(.data[[dn_col]]),
                          paste0(flowpath_id, ".", part + 1))
     ) |>
-    dplyr::ungroup() %>%
-    dplyr::mutate(
-      flowpath_id = paste0(flowpath_id, ".", part),
-      lengthkm = .length_km(sf::st_geometry(.))
-    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(flowpath_id = paste0(flowpath_id, ".", part)) |>
     dplyr::select(-part)
+
+  split <- dplyr::mutate(split, lengthkm = .length_km(sf::st_geometry(split)))
 
   # Originals that weren’t split
   base_ids <- unique(.base_id(split$flowpath_id))
@@ -109,7 +108,7 @@ split_flowlines <- function(flines,
   if (is.na(id_col)) stop("ID column not found. Provide one of: ", paste(id_candidates, collapse = ", "))
 
   ln_candidates = c("LENGTHKM", "lengthkm")
-  ln_col <- id_candidates[ln_candidates %in% names(x)][1]
+  ln_col <- ln_candidates[ln_candidates %in% names(x)][1]
   if (is.na(ln_col)) stop("Length column not found. Provide one of: ", paste(ln_candidates, collapse = ", "))
 
   req <- c(id_col, dn_col, ln_col)
@@ -220,10 +219,10 @@ split_flowlines <- function(flines,
     return(dplyr::mutate(event_pts, fID = event_split_fID))
   }
 
-  len_tab <- flines |>
-    dplyr::select(flowpath_id) %>%
-    dplyr::mutate(geom_len = .length_m(sf::st_geometry(.))) |>
+  tmp <- dplyr::select(flines, flowpath_id)
+  len_tab <- dplyr::mutate(tmp, geom_len = .length_m(sf::st_geometry(tmp))) |>
     sf::st_set_geometry(NULL)
+  rm(tmp)
 
   if (nrow(event_pts) > 0) {
     event_pts <- dplyr::left_join(event_pts,
