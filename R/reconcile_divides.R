@@ -163,6 +163,11 @@ reconcile_divides <- function(
   to_split_featureids <-
     unique(trunc(as.numeric(to_split_ids)))
 
+  # Load rasters once outside the per-catchment loop to avoid repeated
+  # disk reads (especially costly with VRT files in Docker environments).
+  fdr_rast <- terra::rast(fdr)
+  fac_rast <- terra::rast(fac)
+
   # --- begin split_cat -------------------------------------------------------
   split_cat <- function(feature_id) {
     # message(glue::glue("{Sys.time()} split_cat: {feature_id}"))
@@ -184,7 +189,7 @@ reconcile_divides <- function(
     cropped <-
       suppressWarnings(
         terra::crop(
-          terra::rast(fdr),
+          fdr_rast,
           terra::vect(to_split_cat)
         )
       )
@@ -285,8 +290,8 @@ reconcile_divides <- function(
       fdr <- terra::rast(path_fdr)
       fac <- terra::rast(path_fac)
     } else {
-      fdr <- terra::rast(fdr)
-      fac <- terra::rast(fac)
+      fdr <- fdr_rast
+      fac <- fac_rast
     }
 
     buffered_area <-
