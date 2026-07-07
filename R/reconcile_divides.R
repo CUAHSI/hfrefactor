@@ -163,10 +163,7 @@ reconcile_divides <- function(
   to_split_featureids <-
     unique(trunc(as.numeric(to_split_ids)))
 
-  # Load rasters once outside the per-catchment loop to avoid repeated
-  # disk reads (especially costly with VRT files in Docker environments).
-  fdr_rast <- terra::rast(fdr)
-  fac_rast <- terra::rast(fac)
+  logger::log_info(paste("catchments to split:", length(to_split_featureids)))
 
   # --- begin split_cat -------------------------------------------------------
   split_cat <- function(feature_id) {
@@ -189,7 +186,7 @@ reconcile_divides <- function(
     cropped <-
       suppressWarnings(
         terra::crop(
-          fdr_rast,
+          terra::rast(fdr),
           terra::vect(to_split_cat)
         )
       )
@@ -290,8 +287,8 @@ reconcile_divides <- function(
       fdr <- terra::rast(path_fdr)
       fac <- terra::rast(path_fac)
     } else {
-      fdr <- fdr_rast
-      fac <- fac_rast
+      fdr <- terra::rast(fdr)
+      fac <- terra::rast(fac)
     }
 
     buffered_area <-
@@ -381,10 +378,11 @@ reconcile_divides <- function(
   }
 
   log_fmt <- "{arg_time}\t{arg_status}\t{arg_fid}\t{arg_msg}\n"
-  log_file <- file(log_path, "a")
+
+  n_cores <- max(1L, parallel::detectCores() - 1L)
 
   split_cats <-
-    lapply(
+    parallel::mclapply(
       to_split_featureids,
       function(fid) {
         status <- "SUCCESS"
@@ -395,10 +393,6 @@ reconcile_divides <- function(
         if (inherits(result, "try-error")) {
           status <- "ERROR"
           msg <- as.character(result)[1]
-          message(sprintf(
-            "FEATUREID %s could not be split (likely at raster edge or incomplete FAC coverage); using original unsplit geometry.",
-            fid
-          ))
           result <-
             dplyr::filter(divides, FEATUREID == !!fid) |>
             dplyr::select(FEATUREID, geometry) |>
@@ -423,20 +417,28 @@ reconcile_divides <- function(
 
         end_time <- Sys.time()
         diff_time <- format(end_time - start_time)
-        log_msg <- list(
-          arg_time = start_time,
+        attr(result, ".log_entry") <- list(
+          arg_time   = start_time,
           arg_status = status,
-          arg_fid = fid,
-          arg_msg = trimws(paste0("(", diff_time, ") ", msg), "right")
-        ) |>
-          glue::glue_data(log_fmt)
-
-        cat(log_msg, "\n", file = log_file)
-        message(log_msg)
+          arg_fid    = fid,
+          arg_msg    = trimws(paste0("(", diff_time, ") ", msg), "right")
+        )
 
         result
-      }
+      },
+      mc.cores = n_cores
     )
+
+  # Workers can't share a file connection, so write log entries after collection
+  log_file <- file(log_path, "a")
+  for (item in split_cats) {
+    entry <- attr(item, ".log_entry")
+    if (!is.null(entry)) {
+      log_msg <- glue::glue_data(entry, log_fmt)
+      cat(log_msg, "\n", file = log_file)
+      message(log_msg)
+    }
+  }
   close(log_file)
 
   if (length(split_cats) == 0) {
