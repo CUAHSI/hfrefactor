@@ -286,6 +286,7 @@ refactor <- function(gpkg      = NULL,
                      fac  = NULL,
                      fdr  = NULL,
                      keep = NULL,
+                     n_cores = 1L,
                      outfile = NULL) {
 
   if(is.null(outfile)){
@@ -469,7 +470,8 @@ refactor <- function(gpkg      = NULL,
       min_area_m = min_area_m2,
       snap_distance_m = snap_distance_m,
       simplify_tolerance_m = simplify_tolerance_m,
-      keep = keep
+      keep = keep,
+      n_cores = n_cores
     ) |>
     clean_divide_geometry(div,keep = NULL)
 

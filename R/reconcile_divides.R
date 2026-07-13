@@ -129,7 +129,8 @@ reconcile_divides <- function(
     min_area_m2,
     snap_distance_m,
     simplify_tolerance_m,
-    keep
+    keep,
+    n_cores = 1L
 ) {
   reconciled <-
     reconciled_fp |>
@@ -379,7 +380,7 @@ reconcile_divides <- function(
 
   log_fmt <- "{arg_time}\t{arg_status}\t{arg_fid}\t{arg_msg}\n"
 
-  n_cores <- max(1L, parallel::detectCores() - 1L)
+  n_cores <- max(1L, as.integer(n_cores))
 
   split_cats <-
     parallel::mclapply(
