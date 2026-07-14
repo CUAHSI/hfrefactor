@@ -351,7 +351,6 @@ reconcile_divides <- function(
     }
 
     # -----------------------------------------------------
-
     sf::st_sf(
       FEATUREID = to_split_fline$COMID,
       retried = !is.null(first_error),
@@ -378,13 +377,17 @@ reconcile_divides <- function(
   log_fmt <- "{arg_time}\t{arg_status}\t{arg_fid}\t{arg_msg}\n"
   log_file <- file(log_path, "a")
 
+  current_count <- 0
+  total_count <- length(to_split_featureids)
   split_cats <-
     lapply(
       to_split_featureids,
       function(fid) {
+        current_count <<- current_count + 1
         status <- "SUCCESS"
         start_time <- Sys.time()
         msg <- ""
+        msg <- paste(msg, current_count, "/", total_count, "")
 
         result <- try(split_cat(fid), silent = TRUE)
         if (inherits(result, "try-error")) {
